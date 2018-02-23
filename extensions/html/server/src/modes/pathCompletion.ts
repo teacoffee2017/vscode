@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 'use strict';
 
-import { TextDocument, CompletionList, CompletionItemKind, CompletionItem } from 'vscode-languageserver-types';
+import { TextDocument, CompletionList, CompletionItemKind, CompletionItem, TextEdit, Range } from 'vscode-languageserver-types';
 import { WorkspaceFolder } from 'vscode-languageserver-protocol/lib/protocol.workspaceFolders.proposed';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -32,8 +32,7 @@ export function getPathCompletionParticipant(
 					workspaceRoot = resolveWorkspaceRoot(document, workspaceFolders);
 				}
 
-				const suggestions = providePathSuggestions(value, URI.parse(document.uri).fsPath, workspaceRoot);
-				result.items = [...suggestions, ...result.items];
+				result.items = providePathSuggestions(value, URI.parse(document.uri).fsPath, range, workspaceRoot);
 			}
 		}
 	};
@@ -55,7 +54,7 @@ function shouldDoPathCompletion(tag: string, attr: string, value: string): boole
 	return false;
 }
 
-export function providePathSuggestions(value: string, activeDocFsPath: string, root?: string): CompletionItem[] {
+export function providePathSuggestions(value: string, activeDocFsPath: string, range: Range, root?: string): CompletionItem[] {
 	if (value.indexOf('/') === -1) {
 		return [];
 	}
@@ -64,17 +63,22 @@ export function providePathSuggestions(value: string, activeDocFsPath: string, r
 		return [];
 	}
 
-	const valueAfterLastSlash = value.slice(value.lastIndexOf('/') + 1);
-	const valueBeforeLastSlash = value.slice(0, value.lastIndexOf('/') + 1);
+	const lastIndexOfSlash = value.lastIndexOf('/');
+	const valueAfterLastSlash = value.slice(lastIndexOfSlash + 1);
+	const valueBeforeLastSlash = value.slice(0, lastIndexOfSlash + 1);
 	const parentDir = startsWith(value, '/')
 		? path.resolve(root, '.' + valueBeforeLastSlash)
 		: path.resolve(activeDocFsPath, '..', valueBeforeLastSlash);
+
+	if (!fs.existsSync(parentDir)) {
+		return [];
+	}
 
 	return fs.readdirSync(parentDir).map(f => {
 		return {
 			label: f,
 			kind: isDir(path.resolve(parentDir, f)) ? CompletionItemKind.Folder : CompletionItemKind.File,
-			insertText: f.slice(valueAfterLastSlash.length)
+			textEdit: TextEdit.replace(Range.create(range.end, range.end), f.slice(valueAfterLastSlash.length))
 		};
 	});
 }
