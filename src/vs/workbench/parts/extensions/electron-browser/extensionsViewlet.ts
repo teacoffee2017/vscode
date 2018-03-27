@@ -13,7 +13,7 @@ import { isPromiseCanceledError, onUnexpectedError, create as createError } from
 import { IWorkbenchContribution } from 'vs/workbench/common/contributions';
 import { IDisposable, dispose } from 'vs/base/common/lifecycle';
 import { Builder, Dimension } from 'vs/base/browser/builder';
-import EventOf, { mapEvent, chain } from 'vs/base/common/event';
+import { Event as EventOf, mapEvent, chain } from 'vs/base/common/event';
 import { IAction } from 'vs/base/common/actions';
 import { domEvent } from 'vs/base/browser/event';
 import { Separator } from 'vs/base/browser/ui/actionbar/actionbar';
@@ -33,7 +33,7 @@ import {
 } from 'vs/workbench/parts/extensions/browser/extensionsActions';
 import { LocalExtensionType, IExtensionManagementService } from 'vs/platform/extensionManagement/common/extensionManagement';
 import { ExtensionsInput } from 'vs/workbench/parts/extensions/common/extensionsInput';
-import { ExtensionsListView, InstalledExtensionsView, RecommendedExtensionsView, WorkspaceRecommendedExtensionsView, BuiltInExtensionsView } from './extensionsViews';
+import { ExtensionsListView, InstalledExtensionsView, RecommendedExtensionsView, WorkspaceRecommendedExtensionsView, BuiltInExtensionsView, BuiltInThemesExtensionsView, BuiltInBasicsExtensionsView } from './extensionsViews';
 import { OpenGlobalSettingsAction } from 'vs/workbench/parts/preferences/browser/preferencesActions';
 import { IProgressService } from 'vs/platform/progress/common/progress';
 import { IWorkbenchEditorService } from 'vs/workbench/services/editor/common/editorService';
@@ -52,7 +52,6 @@ import { IContextMenuService } from 'vs/platform/contextview/browser/contextView
 import { getGalleryExtensionIdFromLocal, getMaliciousExtensionsSet } from 'vs/platform/extensionManagement/common/extensionManagementUtil';
 import { ILogService } from 'vs/platform/log/common/log';
 import { INotificationService } from 'vs/platform/notification/common/notification';
-import { IChoiceService } from 'vs/platform/dialogs/common/dialogs';
 import { IWindowService } from 'vs/platform/windows/common/windows';
 import { IPartService } from 'vs/workbench/services/part/common/partService';
 
@@ -135,6 +134,8 @@ export class ExtensionsViewlet extends PersistentViewsViewlet implements IExtens
 		viewDescriptors.push(this.createInstalledExtensionsListViewDescriptor());
 		viewDescriptors.push(this.createSearchInstalledExtensionsListViewDescriptor());
 		viewDescriptors.push(this.createSearchBuiltInExtensionsListViewDescriptor());
+		viewDescriptors.push(this.createSearchBuiltInBasicsExtensionsListViewDescriptor());
+		viewDescriptors.push(this.createSearchBuiltInThemesExtensionsListViewDescriptor());
 		viewDescriptors.push(this.createDefaultRecommendedExtensionsListViewDescriptor());
 		viewDescriptors.push(this.createOtherRecommendedExtensionsListViewDescriptor());
 		viewDescriptors.push(this.createWorkspaceRecommendedExtensionsListViewDescriptor());
@@ -215,11 +216,36 @@ export class ExtensionsViewlet extends PersistentViewsViewlet implements IExtens
 	private createSearchBuiltInExtensionsListViewDescriptor(): IViewDescriptor {
 		return {
 			id: 'extensions.builtInExtensionsList',
-			name: localize('builtInExtensions', "Built-In"),
+			name: localize('builtInExtensions', "Features"),
 			location: ViewLocation.Extensions,
 			ctor: BuiltInExtensionsView,
 			when: ContextKeyExpr.has('searchBuiltInExtensions'),
-			weight: 100
+			weight: 100,
+			canToggleVisibility: true
+		};
+	}
+
+	private createSearchBuiltInThemesExtensionsListViewDescriptor(): IViewDescriptor {
+		return {
+			id: 'extensions.builtInThemesExtensionsList',
+			name: localize('builtInThemesExtensions', "Themes"),
+			location: ViewLocation.Extensions,
+			ctor: BuiltInThemesExtensionsView,
+			when: ContextKeyExpr.has('searchBuiltInExtensions'),
+			weight: 100,
+			canToggleVisibility: true
+		};
+	}
+
+	private createSearchBuiltInBasicsExtensionsListViewDescriptor(): IViewDescriptor {
+		return {
+			id: 'extensions.builtInBasicsExtensionsList',
+			name: localize('builtInBasicsExtensions', "Languages"),
+			location: ViewLocation.Extensions,
+			ctor: BuiltInBasicsExtensionsView,
+			when: ContextKeyExpr.has('searchBuiltInExtensions'),
+			weight: 100,
+			canToggleVisibility: true
 		};
 	}
 
@@ -488,7 +514,7 @@ export class MaliciousExtensionChecker implements IWorkbenchContribution {
 		@IExtensionManagementService private extensionsManagementService: IExtensionManagementService,
 		@IWindowService private windowService: IWindowService,
 		@ILogService private logService: ILogService,
-		@IChoiceService private choiceService: IChoiceService
+		@INotificationService private notificationService: INotificationService
 	) {
 		this.loopCheckForMaliciousExtensions();
 	}
@@ -509,7 +535,7 @@ export class MaliciousExtensionChecker implements IWorkbenchContribution {
 
 				if (maliciousExtensions.length) {
 					return TPromise.join(maliciousExtensions.map(e => this.extensionsManagementService.uninstall(e, true).then(() => {
-						return this.choiceService.choose(Severity.Warning, localize('malicious warning', "We have uninstalled '{0}' which was reported to be problematic.", getGalleryExtensionIdFromLocal(e)), [localize('reloadNow', "Reload Now")]).then(choice => {
+						return this.notificationService.prompt(Severity.Warning, localize('malicious warning', "We have uninstalled '{0}' which was reported to be problematic.", getGalleryExtensionIdFromLocal(e)), [localize('reloadNow', "Reload Now")]).then(choice => {
 							if (choice === 0) {
 								return this.windowService.reloadWindow();
 							}

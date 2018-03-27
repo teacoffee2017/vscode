@@ -12,7 +12,7 @@ import { IThemeService, registerThemingParticipant, ITheme, ICssStyleCollector }
 import { INotificationsModel, INotificationChangeEvent, NotificationChangeType } from 'vs/workbench/common/notifications';
 import { Dimension } from 'vs/base/browser/builder';
 import { IPartService, Parts } from 'vs/workbench/services/part/common/partService';
-import Event, { Emitter } from 'vs/base/common/event';
+import { Event, Emitter } from 'vs/base/common/event';
 import { IContextKey, IContextKeyService } from 'vs/platform/contextkey/common/contextkey';
 import { NotificationsCenterVisibleContext } from 'vs/workbench/browser/parts/notifications/notificationsCommands';
 import { NotificationsList } from 'vs/workbench/browser/parts/notifications/notificationsList';
@@ -32,10 +32,11 @@ export class NotificationsCenter extends Themable {
 
 	private notificationsCenterContainer: HTMLElement;
 	private notificationsCenterHeader: HTMLElement;
+	private notificationsCenterTitle: HTMLSpanElement;
 	private notificationsList: NotificationsList;
 	private _isVisible: boolean;
 	private workbenchDimensions: Dimension;
-	private _onDidChangeVisibility: Emitter<void>;
+	private readonly _onDidChangeVisibility: Emitter<void>;
 	private notificationsCenterVisibleContextKey: IContextKey<boolean>;
 
 	constructor(
@@ -82,6 +83,9 @@ export class NotificationsCenter extends Themable {
 			this.create();
 		}
 
+		// Title
+		this.updateTitle();
+
 		// Make visible
 		this._isVisible = true;
 		addClass(this.notificationsCenterContainer, 'visible');
@@ -106,6 +110,14 @@ export class NotificationsCenter extends Themable {
 		this._onDidChangeVisibility.fire();
 	}
 
+	private updateTitle(): void {
+		if (this.model.notifications.length === 0) {
+			this.notificationsCenterTitle.innerText = localize('notificationsEmpty', "No new notifications");
+		} else {
+			this.notificationsCenterTitle.innerText = localize('notifications', "Notifications");
+		}
+	}
+
 	private create(): void {
 
 		// Container
@@ -118,10 +130,9 @@ export class NotificationsCenter extends Themable {
 		this.notificationsCenterContainer.appendChild(this.notificationsCenterHeader);
 
 		// Header Title
-		const title = document.createElement('span');
-		addClass(title, 'notifications-center-header-title');
-		title.innerText = localize('notifications', "Notifications");
-		this.notificationsCenterHeader.appendChild(title);
+		this.notificationsCenterTitle = document.createElement('span');
+		addClass(this.notificationsCenterTitle, 'notifications-center-header-title');
+		this.notificationsCenterHeader.appendChild(this.notificationsCenterTitle);
 
 		// Header Toolbar
 		const toolbarContainer = document.createElement('div');
@@ -179,6 +190,9 @@ export class NotificationsCenter extends Themable {
 				this.notificationsList.updateNotificationsList(e.index, 1);
 				break;
 		}
+
+		// Update title
+		this.updateTitle();
 
 		// Hide if no more notifications to show
 		if (this.model.notifications.length === 0) {

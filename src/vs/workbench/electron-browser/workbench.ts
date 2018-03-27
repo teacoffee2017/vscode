@@ -10,13 +10,13 @@ import 'vs/css!./media/workbench';
 import { localize } from 'vs/nls';
 import { TPromise } from 'vs/base/common/winjs.base';
 import { IDisposable, dispose } from 'vs/base/common/lifecycle';
-import Event, { Emitter } from 'vs/base/common/event';
-import DOM = require('vs/base/browser/dom');
+import { Event, Emitter } from 'vs/base/common/event';
+import * as DOM from 'vs/base/browser/dom';
 import { Builder, $ } from 'vs/base/browser/builder';
 import { Delayer, RunOnceScheduler } from 'vs/base/common/async';
 import * as browser from 'vs/base/browser/browser';
 import * as perf from 'vs/base/common/performance';
-import errors = require('vs/base/common/errors');
+import * as errors from 'vs/base/common/errors';
 import { BackupFileService } from 'vs/workbench/services/backup/node/backupFileService';
 import { IBackupFileService } from 'vs/workbench/services/backup/common/backup';
 import { Registry } from 'vs/platform/registry/common/platform';
@@ -35,6 +35,8 @@ import { WorkbenchLayout } from 'vs/workbench/browser/layout';
 import { IActionBarRegistry, Extensions as ActionBarExtensions } from 'vs/workbench/browser/actions';
 import { PanelRegistry, Extensions as PanelExtensions } from 'vs/workbench/browser/panel';
 import { QuickOpenController } from 'vs/workbench/browser/parts/quickopen/quickOpenController';
+import { IQuickInputService } from 'vs/platform/quickinput/common/quickInput';
+import { QuickInputService } from 'vs/workbench/browser/parts/quickinput/quickInput';
 import { getServices } from 'vs/platform/instantiation/common/extensions';
 import { Position, Parts, IPartService, ILayoutOptions, Dimension } from 'vs/workbench/services/part/common/partService';
 import { IWorkspaceContextService, WorkbenchState } from 'vs/platform/workspace/common/workspace';
@@ -133,6 +135,8 @@ export interface IWorkbenchStartedInfo {
 
 type FontAliasingOption = 'default' | 'antialiased' | 'none' | 'auto';
 
+const fontAliasingValues: FontAliasingOption[] = ['antialiased', 'none', 'auto'];
+
 const Identifiers = {
 	WORKBENCH_CONTAINER: 'workbench.main.container',
 	TITLEBAR_PART: 'workbench.parts.titlebar',
@@ -172,7 +176,7 @@ export class Workbench implements IPartService {
 
 	private static readonly fontAliasingConfigurationKey = 'workbench.fontAliasing';
 
-	private _onTitleBarVisibilityChange: Emitter<void>;
+	private readonly _onTitleBarVisibilityChange: Emitter<void>;
 
 	public _serviceBrand: any;
 
@@ -197,6 +201,7 @@ export class Workbench implements IPartService {
 	private editorPart: EditorPart;
 	private statusbarPart: StatusbarPart;
 	private quickOpen: QuickOpenController;
+	private quickInput: QuickInputService;
 	private notificationsCenter: NotificationsCenter;
 	private notificationsToasts: NotificationsToasts;
 	private workbenchLayout: WorkbenchLayout;
@@ -620,6 +625,11 @@ export class Workbench implements IPartService {
 		this.toUnbind.push({ dispose: () => this.quickOpen.shutdown() });
 		serviceCollection.set(IQuickOpenService, this.quickOpen);
 
+		// Quick input service
+		this.quickInput = this.instantiationService.createInstance(QuickInputService);
+		this.toUnbind.push({ dispose: () => this.quickInput.shutdown() });
+		serviceCollection.set(IQuickInputService, this.quickInput);
+
 		// Contributed services
 		const contributedServices = getServices();
 		for (let contributedService of contributedServices) {
@@ -969,13 +979,12 @@ export class Workbench implements IPartService {
 
 	private setFontAliasing(aliasing: FontAliasingOption) {
 		this.fontAliasing = aliasing;
-		const fontAliasingClassNames = [
-			'monaco-font-aliasing-antialiased',
-			'monaco-font-aliasing-none',
-			'monaco-font-aliasing-auto'
-		];
-		document.body.classList.remove(...fontAliasingClassNames);
-		if (aliasing !== 'default') {
+
+		// Remove all
+		document.body.classList.remove(...fontAliasingValues.map(value => `monaco-font-aliasing-${value}`));
+
+		// Add specific
+		if (fontAliasingValues.some(option => option === aliasing)) {
 			document.body.classList.add(`monaco-font-aliasing-${aliasing}`);
 		}
 	}
@@ -989,10 +998,13 @@ export class Workbench implements IPartService {
 
 		// Preserve zen mode only on reload. Real quit gets out of zen mode so novice users do not get stuck in zen mode.
 		const zenConfig = this.configurationService.getValue<IZenModeSettings>('zenMode');
-		const zenModeActive = (zenConfig.restore || reason === ShutdownReason.RELOAD) && this.zenMode.active;
-		if (zenModeActive) {
+		const restoreZenMode = this.zenMode.active && (zenConfig.restore || reason === ShutdownReason.RELOAD);
+		if (restoreZenMode) {
 			this.storageService.store(Workbench.zenModeActiveStorageKey, true, StorageScope.WORKSPACE);
 		} else {
+			if (this.zenMode.active) {
+				this.toggleZenMode(true);
+			}
 			this.storageService.remove(Workbench.zenModeActiveStorageKey, StorageScope.WORKSPACE);
 		}
 
@@ -1150,6 +1162,7 @@ export class Workbench implements IPartService {
 				statusbar: this.statusbarPart,			// Statusbar
 			},
 			this.quickOpen,								// Quickopen
+			this.quickInput,							// QuickInput
 			this.notificationsCenter,					// Notifications Center
 			this.notificationsToasts					// Notifications Toasts
 		);
@@ -1277,7 +1290,6 @@ export class Workbench implements IPartService {
 
 		// Notifications Status
 		const notificationsStatus = this.instantiationService.createInstance(NotificationsStatus, this.notificationService.model);
-		this.toUnbind.push(notificationsStatus);
 
 		// Eventing
 		this.toUnbind.push(this.notificationsCenter.onDidChangeVisibility(() => {
@@ -1319,13 +1331,11 @@ export class Workbench implements IPartService {
 		// Check if zen mode transitioned to full screen and if now we are out of zen mode -> we need to go out of full screen
 		let toggleFullScreen = false;
 		// Same goes for the centered editor layout
-		let toggleCenteredEditorLayout = false;
 		if (this.zenMode.active) {
 			const config = this.configurationService.getValue<IZenModeSettings>('zenMode');
 			toggleFullScreen = !browser.isFullscreen() && config.fullScreen;
 			this.zenMode.transitionedToFullScreen = toggleFullScreen;
-			toggleCenteredEditorLayout = !this.isEditorLayoutCentered() && config.centerLayout;
-			this.zenMode.transitionedToCenteredEditorLayout = toggleCenteredEditorLayout;
+			this.zenMode.transitionedToCenteredEditorLayout = !this.isEditorLayoutCentered() && config.centerLayout;
 			this.zenMode.wasSideBarVisible = this.isVisible(Parts.SIDEBAR_PART);
 			this.zenMode.wasPanelVisible = this.isVisible(Parts.PANEL_PART);
 			this.setPanelHidden(true, true).done(void 0, errors.onUnexpectedError);
@@ -1342,13 +1352,19 @@ export class Workbench implements IPartService {
 			if (config.hideTabs) {
 				this.editorPart.hideTabs(true);
 			}
+
+			if (config.centerLayout) {
+				this.centerEditorLayout(true, true);
+			}
 		} else {
 			if (this.zenMode.wasPanelVisible) {
 				this.setPanelHidden(false, true).done(void 0, errors.onUnexpectedError);
 			}
-
 			if (this.zenMode.wasSideBarVisible) {
 				this.setSideBarHidden(false, true).done(void 0, errors.onUnexpectedError);
+			}
+			if (this.zenMode.transitionedToCenteredEditorLayout) {
+				this.centerEditorLayout(false, true);
 			}
 
 			// Status bar and activity bar visibility come from settings -> update their visibility.
@@ -1360,14 +1376,9 @@ export class Workbench implements IPartService {
 			}
 
 			toggleFullScreen = this.zenMode.transitionedToFullScreen && browser.isFullscreen();
-			toggleCenteredEditorLayout = this.zenMode.transitionedToCenteredEditorLayout && this.isEditorLayoutCentered();
 		}
 
 		this.inZenMode.set(this.zenMode.active);
-
-		if (toggleCenteredEditorLayout) {
-			this.toggleCenteredEditorLayout(true);
-		}
 
 		if (!skipLayout) {
 			this.layout();
@@ -1382,8 +1393,8 @@ export class Workbench implements IPartService {
 		return this.centeredEditorLayoutActive;
 	}
 
-	public toggleCenteredEditorLayout(skipLayout?: boolean): void {
-		this.centeredEditorLayoutActive = !this.centeredEditorLayoutActive;
+	public centerEditorLayout(active: boolean, skipLayout?: boolean): void {
+		this.centeredEditorLayoutActive = active;
 		this.storageService.store(Workbench.centeredEditorLayoutActiveStorageKey, this.centeredEditorLayoutActive, StorageScope.GLOBAL);
 
 		if (!skipLayout) {

@@ -6,7 +6,7 @@
 import URI from 'vs/base/common/uri';
 import * as paths from 'vs/base/common/paths';
 import { TPromise } from 'vs/base/common/winjs.base';
-import Event, { Emitter } from 'vs/base/common/event';
+import { Event, Emitter } from 'vs/base/common/event';
 import { readFile } from 'vs/base/node/pfs';
 import * as errors from 'vs/base/common/errors';
 import * as collections from 'vs/base/common/collections';
@@ -79,7 +79,7 @@ export class WorkspaceConfiguration extends Disposable {
 	private _workspaceConfigurationWatcher: ConfigWatcher<WorkspaceConfigurationModelParser>;
 	private _workspaceConfigurationWatcherDisposables: IDisposable[] = [];
 
-	private _onDidUpdateConfiguration: Emitter<void> = this._register(new Emitter<void>());
+	private readonly _onDidUpdateConfiguration: Emitter<void> = this._register(new Emitter<void>());
 	public readonly onDidUpdateConfiguration: Event<void> = this._onDidUpdateConfiguration.event;
 
 	private _workspaceConfigurationModelParser: WorkspaceConfigurationModelParser = new WorkspaceConfigurationModelParser(this._workspaceConfigPath ? this._workspaceConfigPath.fsPath : '');
@@ -182,7 +182,7 @@ export class FolderConfiguration extends Disposable {
 	private _cache: ConfigurationModel = new ConfigurationModel();
 
 	private reloadConfigurationScheduler: RunOnceScheduler;
-	private reloadConfigurationEventEmitter: Emitter<ConfigurationModel> = new Emitter<ConfigurationModel>();
+	private readonly reloadConfigurationEventEmitter: Emitter<ConfigurationModel> = new Emitter<ConfigurationModel>();
 
 	constructor(private folder: URI, private configFolderRelativePath: string, workbenchState: WorkbenchState) {
 		super();
@@ -254,7 +254,7 @@ export class FolderConfiguration extends Disposable {
 		for (let i = 0, len = events.length; i < len; i++) {
 			const resource = events[i].resource;
 			const isJson = paths.extname(resource.fsPath) === '.json';
-			const isDeletedSettingsFolder = (events[i].type === FileChangeType.DELETED && paths.isEqual(paths.basename(resource.fsPath), this.configFolderRelativePath));
+			const isDeletedSettingsFolder = (events[i].type === FileChangeType.DELETED && paths.basename(resource.fsPath) === this.configFolderRelativePath);
 			if (!isJson && !isDeletedSettingsFolder) {
 				continue; // only JSON files or the actual settings folder
 			}

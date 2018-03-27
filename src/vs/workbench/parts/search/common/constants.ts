@@ -20,6 +20,8 @@ export const ToggleCaseSensitiveCommandId = 'toggleSearchCaseSensitive';
 export const ToggleWholeWordCommandId = 'toggleSearchWholeWord';
 export const ToggleRegexCommandId = 'toggleSearchRegex';
 
+export const ToggleSearchViewPositionCommandId = 'search.action.toggleSearchViewPosition';
+
 export const SearchViewVisibleKey = new RawContextKey<boolean>('searchViewletVisible', true);
 export const InputBoxFocusedKey = new RawContextKey<boolean>('inputBoxFocus', false);
 export const SearchInputBoxFocusedKey = new RawContextKey<boolean>('searchInputBoxFocus', false);
@@ -27,6 +29,7 @@ export const ReplaceInputBoxFocusedKey = new RawContextKey<boolean>('replaceInpu
 export const PatternIncludesFocusedKey = new RawContextKey<boolean>('patternIncludesInputBoxFocus', false);
 export const PatternExcludesFocusedKey = new RawContextKey<boolean>('patternExcludesInputBoxFocus', false);
 export const ReplaceActiveKey = new RawContextKey<boolean>('replaceActive', false);
+export const HasSearchResults = new RawContextKey<boolean>('hasSearchResult', false);
 
 export const FirstMatchFocusKey = new RawContextKey<boolean>('firstMatchFocus', false);
 export const FileMatchOrMatchFocusKey = new RawContextKey<boolean>('fileMatchOrMatchFocus', false);

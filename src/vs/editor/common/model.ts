@@ -15,6 +15,7 @@ import { Selection } from 'vs/editor/common/core/selection';
 import { ModelRawContentChangedEvent, IModelContentChangedEvent, IModelDecorationsChangedEvent, IModelLanguageChangedEvent, IModelOptionsChangedEvent, IModelLanguageConfigurationChangedEvent, IModelTokensChangedEvent, IModelContentChange } from 'vs/editor/common/model/textModelEvents';
 import { ThemeColor } from 'vs/platform/theme/common/themeService';
 import { ITextSnapshot } from 'vs/platform/files/common/files';
+import { SearchData } from 'vs/editor/common/model/textModelSearch';
 
 /**
  * Vertical Lane in the overview ruler of the editor.
@@ -389,6 +390,7 @@ export interface ITextModelCreationOptions {
 	detectIndentation: boolean;
 	trimAutoWhitespace: boolean;
 	defaultEOL: DefaultEndOfLine;
+	isForSimpleWidget: boolean;
 }
 
 export interface ITextModelUpdateOptions {
@@ -447,6 +449,12 @@ export interface ITextModel {
 	 * A unique identifier associated with this model.
 	 */
 	readonly id: string;
+
+	/**
+	 * This model is constructed for a simple widget code editor.
+	 * @internal
+	 */
+	readonly isForSimpleWidget: boolean;
 
 	/**
 	 * If true, the text model might contain RTL.
@@ -641,6 +649,11 @@ export interface ITextModel {
 	 * Returns if the model was disposed or not.
 	 */
 	isDisposed(): boolean;
+
+	/**
+	 * @internal
+	 */
+	tokenizeViewport(startLineNumber: number, endLineNumber: number): void;
 
 	/**
 	 * Only basic mode supports allowed on this model because it is simply too large.
@@ -1100,6 +1113,7 @@ export interface ITextBuffer {
 
 	setEOL(newEOL: '\r\n' | '\n'): void;
 	applyEdits(rawOperations: IIdentifiedSingleEditOperation[], recordTrimAutoWhitespace: boolean): ApplyEditsResult;
+	findMatchesLineByLine?(searchRange: Range, searchData: SearchData, captureMatches: boolean, limitResultCount: number): FindMatch[];
 }
 
 /**

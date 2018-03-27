@@ -36,7 +36,6 @@ import { Disposable } from 'vs/base/common/lifecycle';
 import { IWorkbenchContribution } from 'vs/workbench/common/contributions';
 import { IPartService } from 'vs/workbench/services/part/common/partService';
 
-
 export class ExplorerViewletViewsContribution extends Disposable implements IWorkbenchContribution {
 
 	private openEditorsVisibleContextKey: IContextKey<boolean>;
@@ -254,6 +253,15 @@ export class ExplorerViewlet extends PersistentViewsViewlet implements IExplorer
 
 	public getViewletState(): FileViewletState {
 		return this.viewletState;
+	}
+
+	focus(): void {
+		const explorerView = this.getExplorerView();
+		if (explorerView && explorerView.isExpanded()) {
+			explorerView.focus();
+		} else {
+			super.focus();
+		}
 	}
 
 	protected loadViewsStates(): void {

@@ -94,10 +94,10 @@ export class WalkThroughPart extends BaseEditor {
 
 	constructor(
 		@ITelemetryService telemetryService: ITelemetryService,
+		@IThemeService themeService: IThemeService,
+		@IModelService modelService: IModelService,
 		@IInstantiationService private instantiationService: IInstantiationService,
-		@IThemeService protected themeService: IThemeService,
 		@IOpenerService private openerService: IOpenerService,
-		@IModelService protected modelService: IModelService,
 		@IKeybindingService private keybindingService: IKeybindingService,
 		@IStorageService private storageService: IStorageService,
 		@IContextKeyService private contextKeyService: IContextKeyService,
@@ -328,7 +328,7 @@ export class WalkThroughPart extends BaseEditor {
 					/* __GDPR__FRAGMENT__
 						"EditorTelemetryData" : {
 							"target" : { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
-							"snippet": { "classification": "SystemMetaData", "purpose": "FeatureInsight" }
+							"snippet": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "isMeasurement": true }
 						}
 					*/
 					const telemetryData = {
@@ -383,7 +383,7 @@ export class WalkThroughPart extends BaseEditor {
 							"walkThroughSnippetInteraction" : {
 								"from" : { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
 								"type": { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
-								"snippet": { "classification": "SystemMetaData", "purpose": "FeatureInsight" }
+								"snippet": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "isMeasurement": true }
 							}
 						*/
 						this.telemetryService.publicLog('walkThroughSnippetInteraction', {
@@ -397,7 +397,7 @@ export class WalkThroughPart extends BaseEditor {
 							"walkThroughSnippetInteraction" : {
 								"from" : { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
 								"type": { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
-								"snippet": { "classification": "SystemMetaData", "purpose": "FeatureInsight" }
+								"snippet": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "isMeasurement": true }
 							}
 						*/
 						this.telemetryService.publicLog('walkThroughSnippetInteraction', {
@@ -411,7 +411,7 @@ export class WalkThroughPart extends BaseEditor {
 							"walkThroughSnippetInteraction" : {
 								"from" : { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
 								"type": { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
-								"snippet": { "classification": "SystemMetaData", "purpose": "FeatureInsight" }
+								"snippet": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "isMeasurement": true }
 							}
 						*/
 						this.telemetryService.publicLog('walkThroughSnippetInteraction', {

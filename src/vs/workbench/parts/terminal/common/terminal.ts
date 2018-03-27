@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 'use strict';
 
-import Event from 'vs/base/common/event';
+import { Event } from 'vs/base/common/event';
 import { IDisposable } from 'vs/base/common/lifecycle';
 import { RawContextKey, ContextKeyExpr, IContextKey } from 'vs/platform/contextkey/common/contextkey';
 import { TPromise } from 'vs/base/common/winjs.base';
@@ -268,6 +268,12 @@ export interface ITerminalInstance {
 	disableLayout: boolean;
 
 	/**
+	 * An object that tracks when commands are run and enables navigating and selecting between
+	 * them.
+	 */
+	readonly commandTracker: ITerminalCommandTracker;
+
+	/**
 	 * Dispose the terminal instance, removing it from the panel/service and freeing up resources.
 	 */
 	dispose(): void;
@@ -439,4 +445,11 @@ export interface ITerminalInstance {
 	setTitle(title: string, eventFromProcess: boolean): void;
 
 	addDisposable(disposable: IDisposable): void;
+}
+
+export interface ITerminalCommandTracker {
+	scrollToPreviousCommand(): void;
+	scrollToNextCommand(): void;
+	selectToPreviousCommand(): void;
+	selectToNextCommand(): void;
 }

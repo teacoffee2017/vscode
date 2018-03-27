@@ -28,6 +28,9 @@ import { PANEL_BACKGROUND, PANEL_BORDER } from 'vs/workbench/common/theme';
 import { TERMINAL_BACKGROUND_COLOR, TERMINAL_BORDER_COLOR } from 'vs/workbench/parts/terminal/electron-browser/terminalColorRegistry';
 import { DataTransfers } from 'vs/base/browser/dnd';
 import { ILifecycleService, LifecyclePhase } from 'vs/platform/lifecycle/common/lifecycle';
+import { ipcRenderer as ipc } from 'electron';
+import { IOpenFileRequest } from 'vs/platform/windows/common/windows';
+import { whenDeleted } from 'vs/base/node/pfs';
 
 export class TerminalPanel extends Panel {
 
@@ -82,6 +85,15 @@ export class TerminalPanel extends Panel {
 		}));
 		this._updateFont();
 		this._updateTheme();
+
+		ipc.on('vscode:openFiles', (_event: any, request: IOpenFileRequest) => {
+			// if the request to open files is coming in from the integrated terminal (identified though
+			// the termProgram variable) and we are instructed to wait for editors close, wait for the
+			// marker file to get deleted and then focus back to the integrated terminal.
+			if (request.termProgram === 'vscode' && request.filesToWait) {
+				whenDeleted(request.filesToWait.waitMarkerFilePath).then(() => this.focus());
+			}
+		});
 
 		// Force another layout (first is setContainers) since config has changed
 		this.layout(new Dimension(this._terminalContainer.offsetWidth, this._terminalContainer.offsetHeight));
@@ -150,14 +162,13 @@ export class TerminalPanel extends Panel {
 			this._copyContextMenuAction = this._instantiationService.createInstance(CopyTerminalSelectionAction, CopyTerminalSelectionAction.ID, nls.localize('copy', "Copy"));
 			this._contextMenuActions = [
 				this._instantiationService.createInstance(CreateNewTerminalAction, CreateNewTerminalAction.ID, CreateNewTerminalAction.PANEL_LABEL),
+				this._instantiationService.createInstance(SplitTerminalAction, SplitTerminalAction.ID, nls.localize('split', "Split")),
 				new Separator(),
 				this._copyContextMenuAction,
 				this._instantiationService.createInstance(TerminalPasteAction, TerminalPasteAction.ID, nls.localize('paste', "Paste")),
 				this._instantiationService.createInstance(SelectAllTerminalAction, SelectAllTerminalAction.ID, nls.localize('selectAll', "Select All")),
 				new Separator(),
-				this._instantiationService.createInstance(ClearTerminalAction, ClearTerminalAction.ID, nls.localize('clear', "Clear")),
-				new Separator(),
-				this._instantiationService.createInstance(SplitTerminalAction, SplitTerminalAction.ID, nls.localize('split', "Split"))
+				this._instantiationService.createInstance(ClearTerminalAction, ClearTerminalAction.ID, nls.localize('clear', "Clear"))
 			];
 			this._contextMenuActions.forEach(a => {
 				this._register(a);

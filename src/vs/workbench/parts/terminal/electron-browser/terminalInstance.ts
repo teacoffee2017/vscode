@@ -10,7 +10,7 @@ import * as lifecycle from 'vs/base/common/lifecycle';
 import * as nls from 'vs/nls';
 import * as platform from 'vs/base/common/platform';
 import * as dom from 'vs/base/browser/dom';
-import Event, { Emitter } from 'vs/base/common/event';
+import { Event, Emitter } from 'vs/base/common/event';
 import Uri from 'vs/base/common/uri';
 import { WindowsShellHelper } from 'vs/workbench/parts/terminal/electron-browser/windowsShellHelper';
 import { Terminal as XTermTerminal } from 'vscode-xterm';
@@ -40,6 +40,7 @@ import { IConfigurationService } from 'vs/platform/configuration/common/configur
 import { IEditorOptions } from 'vs/editor/common/config/editorOptions';
 import { INotificationService } from 'vs/platform/notification/common/notification';
 import { ILogService } from 'vs/platform/log/common/log';
+import { TerminalCommandTracker } from 'vs/workbench/parts/terminal/node/terminalCommandTracker';
 
 /** The amount of time to consider terminal errors to be related to the launch */
 const LAUNCHING_DURATION = 500;
@@ -78,10 +79,10 @@ export class TerminalInstance implements ITerminalInstance {
 	private _processState: ProcessState;
 	private _processReady: TPromise<void>;
 	private _isDisposed: boolean;
-	private _onDisposed: Emitter<ITerminalInstance>;
-	private _onFocused: Emitter<ITerminalInstance>;
-	private _onProcessIdReady: Emitter<ITerminalInstance>;
-	private _onTitleChanged: Emitter<string>;
+	private readonly _onDisposed: Emitter<ITerminalInstance>;
+	private readonly _onFocused: Emitter<ITerminalInstance>;
+	private readonly _onProcessIdReady: Emitter<ITerminalInstance>;
+	private readonly _onTitleChanged: Emitter<string>;
 	private _process: cp.ChildProcess;
 	private _processId: number;
 	private _skipTerminalCommands: string[];
@@ -103,6 +104,7 @@ export class TerminalInstance implements ITerminalInstance {
 
 	private _widgetManager: TerminalWidgetManager;
 	private _linkHandler: TerminalLinkHandler;
+	private _commandTracker: TerminalCommandTracker;
 
 	public disableLayout: boolean;
 	public get id(): number { return this._id; }
@@ -115,6 +117,7 @@ export class TerminalInstance implements ITerminalInstance {
 	public get hadFocusOnExit(): boolean { return this._hadFocusOnExit; }
 	public get isTitleSetByProcess(): boolean { return !!this._messageTitleListener; }
 	public get shellLaunchConfig(): IShellLaunchConfig { return Object.freeze(this._shellLaunchConfig); }
+	public get commandTracker(): TerminalCommandTracker { return this._commandTracker; }
 
 	public constructor(
 		private _terminalFocusContextKey: IContextKey<boolean>,
@@ -251,8 +254,16 @@ export class TerminalInstance implements ITerminalInstance {
 		}
 
 		// The panel is minimized
-		if (!height) {
+		if (!this._isVisible) {
 			return TerminalInstance._lastKnownDimensions;
+		} else {
+			// Trigger scroll event manually so that the viewport's scroll area is synced. This
+			// needs to happen otherwise its scrollTop value is invalid when the panel is toggled as
+			// it gets removed and then added back to the DOM (resetting scrollTop to 0).
+			// Upstream issue: https://github.com/sourcelair/xterm.js/issues/291
+			if (this._xterm) {
+				this._xterm.emit('scroll', this._xterm.buffer.ydisp);
+			}
 		}
 
 		if (!this._wrapperElement) {
@@ -322,6 +333,7 @@ export class TerminalInstance implements ITerminalInstance {
 			return false;
 		});
 		this._linkHandler = this._instantiationService.createInstance(TerminalLinkHandler, this._xterm, platform.platform, this._initialCwd);
+		this._commandTracker = new TerminalCommandTracker(this._xterm);
 		this._instanceDisposables.push(this._themeService.onThemeChange(theme => this._updateTheme(theme)));
 	}
 
@@ -960,7 +972,7 @@ export class TerminalInstance implements ITerminalInstance {
 	private _sendLineData(buffer: any, lineIndex: number): void {
 		let lineData = buffer.translateBufferLineToString(lineIndex, true);
 		while (lineIndex >= 0 && buffer.lines.get(lineIndex--).isWrapped) {
-			lineData = buffer.translateBufferLineToString(lineIndex, true) + lineData;
+			lineData = buffer.translateBufferLineToString(lineIndex, false) + lineData;
 		}
 		this._onLineDataListeners.forEach(listener => {
 			try {

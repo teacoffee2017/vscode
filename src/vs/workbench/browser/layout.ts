@@ -9,6 +9,7 @@ import { TPromise } from 'vs/base/common/winjs.base';
 import * as errors from 'vs/base/common/errors';
 import { Part } from 'vs/workbench/browser/part';
 import { QuickOpenController } from 'vs/workbench/browser/parts/quickopen/quickOpenController';
+import { QuickInputService } from 'vs/workbench/browser/parts/quickinput/quickInput';
 import { Sash, ISashEvent, IVerticalSashLayoutProvider, IHorizontalSashLayoutProvider, Orientation } from 'vs/base/browser/ui/sash/sash';
 import { IWorkbenchEditorService } from 'vs/workbench/services/editor/common/editorService';
 import { IPartService, Position, ILayoutOptions, Parts } from 'vs/workbench/services/part/common/partService';
@@ -24,9 +25,11 @@ import { NotificationsCenter } from 'vs/workbench/browser/parts/notifications/no
 import { NotificationsToasts } from 'vs/workbench/browser/parts/notifications/notificationsToasts';
 
 const MIN_SIDEBAR_PART_WIDTH = 170;
+const DEFAULT_SIDEBAR_PART_WIDTH = 300;
 const MIN_EDITOR_PART_HEIGHT = 70;
 const MIN_EDITOR_PART_WIDTH = 220;
 const MIN_PANEL_PART_HEIGHT = 77;
+const DEFAULT_PANEL_PART_SIZE = 350;
 const MIN_PANEL_PART_WIDTH = 300;
 const DEFAULT_PANEL_SIZE_COEFFICIENT = 0.4;
 const PANEL_SIZE_BEFORE_MAXIMIZED_BOUNDARY = 0.7;
@@ -65,6 +68,7 @@ export class WorkbenchLayout implements IVerticalSashLayoutProvider, IHorizontal
 	private panel: Part;
 	private statusbar: Part;
 	private quickopen: QuickOpenController;
+	private quickInput: QuickInputService;
 	private notificationsCenter: NotificationsCenter;
 	private notificationsToasts: NotificationsToasts;
 	private toUnbind: IDisposable[];
@@ -95,6 +99,7 @@ export class WorkbenchLayout implements IVerticalSashLayoutProvider, IHorizontal
 			statusbar: Part
 		},
 		quickopen: QuickOpenController,
+		quickInput: QuickInputService,
 		notificationsCenter: NotificationsCenter,
 		notificationsToasts: NotificationsToasts,
 		@IStorageService private storageService: IStorageService,
@@ -114,6 +119,7 @@ export class WorkbenchLayout implements IVerticalSashLayoutProvider, IHorizontal
 		this.panel = parts.panel;
 		this.statusbar = parts.statusbar;
 		this.quickopen = quickopen;
+		this.quickInput = quickInput;
 		this.notificationsCenter = notificationsCenter;
 		this.notificationsToasts = notificationsToasts;
 		this.toUnbind = [];
@@ -133,9 +139,9 @@ export class WorkbenchLayout implements IVerticalSashLayoutProvider, IHorizontal
 			orientation: Orientation.HORIZONTAL
 		});
 
-		this._sidebarWidth = this.storageService.getInteger(WorkbenchLayout.sashXOneWidthSettingsKey, StorageScope.GLOBAL, -1);
-		this._panelHeight = this.storageService.getInteger(WorkbenchLayout.sashYHeightSettingsKey, StorageScope.GLOBAL, 0);
-		this._panelWidth = this.storageService.getInteger(WorkbenchLayout.sashXTwoWidthSettingsKey, StorageScope.GLOBAL, 0);
+		this._sidebarWidth = Math.max(this.partLayoutInfo.sidebar.minWidth, this.storageService.getInteger(WorkbenchLayout.sashXOneWidthSettingsKey, StorageScope.GLOBAL, DEFAULT_SIDEBAR_PART_WIDTH));
+		this._panelHeight = Math.max(this.partLayoutInfo.panel.minHeight, this.storageService.getInteger(WorkbenchLayout.sashYHeightSettingsKey, StorageScope.GLOBAL, DEFAULT_PANEL_PART_SIZE));
+		this._panelWidth = Math.max(this.partLayoutInfo.panel.minWidth, this.storageService.getInteger(WorkbenchLayout.sashXTwoWidthSettingsKey, StorageScope.GLOBAL, DEFAULT_PANEL_PART_SIZE));
 
 		this.layoutEditorGroupsVertically = (this.editorGroupService.getGroupOrientation() !== 'horizontal');
 
@@ -397,7 +403,7 @@ export class WorkbenchLayout implements IVerticalSashLayoutProvider, IHorizontal
 		this.toUnbind.push(this.sashXOne.onDidReset(() => {
 			let activeViewlet = this.viewletService.getActiveViewlet();
 			let optimalWidth = activeViewlet && activeViewlet.getOptimalWidth();
-			this.sidebarWidth = optimalWidth || 0;
+			this.sidebarWidth = Math.max(optimalWidth, DEFAULT_SIDEBAR_PART_WIDTH);
 			this.storageService.store(WorkbenchLayout.sashXOneWidthSettingsKey, this.sidebarWidth, StorageScope.GLOBAL);
 			this.partService.setSideBarHidden(false).done(() => this.layout(), errors.onUnexpectedError);
 		}));
@@ -648,6 +654,9 @@ export class WorkbenchLayout implements IVerticalSashLayoutProvider, IHorizontal
 
 		// Quick open
 		this.quickopen.layout(this.workbenchSize);
+
+		// Quick input
+		this.quickInput.layout(this.workbenchSize);
 
 		// Notifications
 		this.notificationsCenter.layout(this.workbenchSize);

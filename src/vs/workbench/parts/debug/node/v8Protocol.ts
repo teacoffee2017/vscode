@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import stream = require('stream');
+import * as stream from 'stream';
 import { TPromise } from 'vs/base/common/winjs.base';
 import { canceled } from 'vs/base/common/errors';
 
@@ -149,7 +149,7 @@ export abstract class V8Protocol {
 					break;
 			}
 		} catch (e) {
-			this.onServerError(new Error(e.message || e));
+			this.onServerError(new Error((e.message || e) + '\n' + body));
 		}
 	}
 }

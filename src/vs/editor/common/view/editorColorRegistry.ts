@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import nls = require('vs/nls');
+import * as nls from 'vs/nls';
 import { registerColor, editorBackground, activeContrastBorder, editorForeground } from 'vs/platform/theme/common/colorRegistry';
 import { registerThemingParticipant } from 'vs/platform/theme/common/themeService';
 import { Color, RGBA } from 'vs/base/common/color';
@@ -42,8 +42,11 @@ export const editorWarningBorder = registerColor('editorWarning.border', { dark:
 export const editorInfoForeground = registerColor('editorInfo.foreground', { dark: '#008000', light: '#008000', hc: null }, nls.localize('infoForeground', 'Foreground color of info squigglies in the editor.'));
 export const editorInfoBorder = registerColor('editorInfo.border', { dark: null, light: null, hc: Color.fromHex('#71B771').transparent(0.8) }, nls.localize('infoBorder', 'Border color of info squigglies in the editor.'));
 
+export const editorHintForeground = registerColor('editorHint.foreground', { dark: Color.fromHex('#eeeeee').transparent(0.7), light: '#6c6c6c', hc: null }, nls.localize('hintForeground', 'Foreground color of hint squigglies in the editor.'));
+export const editorHintBorder = registerColor('editorHint.border', { dark: null, light: null, hc: Color.fromHex('#eeeeee').transparent(0.8) }, nls.localize('hintBorder', 'Border color of hint squigglies in the editor.'));
+
 const rulerRangeDefault = new Color(new RGBA(0, 122, 204, 0.6));
-export const overviewRulerRangeHighlight = registerColor('editorOverviewRuler.rangeHighlightForeground', { dark: rulerRangeDefault, light: rulerRangeDefault, hc: rulerRangeDefault }, nls.localize('overviewRulerRangeHighlight', 'Overview ruler marker color for range highlights.'));
+export const overviewRulerRangeHighlight = registerColor('editorOverviewRuler.rangeHighlightForeground', { dark: rulerRangeDefault, light: rulerRangeDefault, hc: rulerRangeDefault }, nls.localize('overviewRulerRangeHighlight', 'Overview ruler marker color for range highlights. The color must not be opaque to not hide underlying decorations.'), true);
 export const overviewRulerError = registerColor('editorOverviewRuler.errorForeground', { dark: new Color(new RGBA(255, 18, 18, 0.7)), light: new Color(new RGBA(255, 18, 18, 0.7)), hc: new Color(new RGBA(255, 50, 50, 1)) }, nls.localize('overviewRuleError', 'Overview ruler marker color for errors.'));
 export const overviewRulerWarning = registerColor('editorOverviewRuler.warningForeground', { dark: new Color(new RGBA(18, 136, 18, 0.7)), light: new Color(new RGBA(18, 136, 18, 0.7)), hc: new Color(new RGBA(50, 255, 50, 1)) }, nls.localize('overviewRuleWarning', 'Overview ruler marker color for warnings.'));
 export const overviewRulerInfo = registerColor('editorOverviewRuler.infoForeground', { dark: new Color(new RGBA(18, 18, 136, 0.7)), light: new Color(new RGBA(18, 18, 136, 0.7)), hc: new Color(new RGBA(50, 50, 255, 1)) }, nls.localize('overviewRuleInfo', 'Overview ruler marker color for infos.'));
